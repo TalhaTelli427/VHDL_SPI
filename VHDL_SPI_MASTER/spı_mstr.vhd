@@ -107,17 +107,22 @@ begin
             r_buf_cnt <= data_size-1;
             buffer_r <= (others => '0');
             receive_data<= (others => '0');
-        elsif rising_edge(clk) then
+       elsif rising_edge(clk) then
+    if clk_enable = '1' then
+        if s_rise_edge = '1' then
+            buffer_r(r_buf_cnt) <= miso;
             if r_buf_cnt = 0 then
                 r_complete <= '1';
                 receive_data <= buffer_r;
-                r_buf_cnt<=data_size-1;
-            elsif s_rise_edge = '1' then
-                r_complete <= '0';
-                buffer_r(r_buf_cnt) <= miso;
+                r_buf_cnt <= data_size-1;
+            else
                 r_buf_cnt <= r_buf_cnt - 1;
+                r_complete <= '0';
             end if;
         end if;
+    end if;
+end if;
+
     end process miso_p;
 
 
