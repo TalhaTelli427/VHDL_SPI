@@ -12,13 +12,13 @@ entity spi_master is
         clk             : in  std_logic;
         rst             : in  std_logic;
         miso            : in  std_logic;
-        transmit_data   : in  std_logic_vector (7 downto 0);
+        transmit_data   : in  std_logic_vector (data_size-1 downto 0);
         start_com       : in  std_logic;
 
         cs_o            : out std_logic;
         s_clk           : out std_logic;
         mosi            : out std_logic;
-        receive_data    : out std_logic_vector (7 downto 0);
+        receive_data    : out std_logic_vector (data_size-1 downto 0);
         com_complete_o  : out std_logic
     );
 end entity spi_master;
@@ -37,12 +37,14 @@ architecture Behavioral of spi_master is
     signal t_buf_cnt     : integer range 0 to data_size-1 :=data_size-1;
     signal t_complete    : std_logic := '0';
 
-    signal buffer_r      : std_logic_vector (data_size-1 downto 0) := (others => '0');
+    
     signal r_complete    : std_logic := '0';
     signal r_buf_cnt     : integer range 0 to data_size-1 := data_size-1;
 
     signal internal_com_complete : std_logic := '0';
     signal com_complete_r_reg  : std_logic := '0';
+    signal cs_release_wait : integer range 0 to 3 := 0; 
+    signal cs_release_active : std_logic := '0';
 
 begin
 
@@ -52,15 +54,30 @@ begin
             clk_enable <= '0';
             cs_o <= '1';
             buffer_t <= (others => '0');
+            cs_release_wait <= 0;
+            cs_release_active <= '0';
+
         elsif rising_edge(clk) then
             if start_com = '1' then
                 clk_enable <= '1';
                 cs_o <= '0';
                 buffer_t <= transmit_data;
+                cs_release_wait <= 0;
+                cs_release_active <= '0';
             elsif internal_com_complete = '1' then 
                 clk_enable <= '0';
-                cs_o <= '1';
+                cs_release_active <= '1';
             end if;
+            if cs_release_active = '1' then
+                if cs_release_wait < 3 then 
+                    cs_release_wait <= cs_release_wait + 1;
+                else
+                    cs_o <= '1'; 
+                    cs_release_wait <= 0;
+                    cs_release_active <= '0';
+                            end if; 
+                end if;    
+
         end if;
     end process start_ctrl;
 
@@ -100,30 +117,29 @@ begin
         end if;
     end process sclk_generator;
 
-    miso_p : process (clk, rst)
-    begin
-        if rst = '1' then
-            r_complete <= '0';
-            r_buf_cnt <= data_size-1;
-            buffer_r <= (others => '0');
-            receive_data<= (others => '0');
-       elsif rising_edge(clk) then
-    if clk_enable = '1' then
-        if s_rise_edge = '1' then
-            buffer_r(r_buf_cnt) <= miso;
-            if r_buf_cnt = 0 then
-                r_complete <= '1';
-                receive_data <= buffer_r;
-                r_buf_cnt <= data_size-1;
-            else
-                r_buf_cnt <= r_buf_cnt - 1;
-                r_complete <= '0';
+miso_p : process (clk, rst)
+begin
+    if rst = '1' then
+        r_complete <= '0';
+        r_buf_cnt <= data_size-1;
+        receive_data <= (others => '0');
+    elsif rising_edge(clk) then
+        r_complete <= '0';
+        
+        if clk_enable = '1' then
+            if s_rise_edge = '1' then
+                receive_data(r_buf_cnt) <= miso;
+                
+                if r_buf_cnt = 0 then
+                    r_complete <= '1';
+                    r_buf_cnt <= data_size-1;
+                else
+                    r_buf_cnt <= r_buf_cnt - 1;
+                end if;
             end if;
         end if;
     end if;
-end if;
-
-    end process miso_p;
+end process;
 
 
     mosi_p : process (clk, rst)
@@ -140,6 +156,8 @@ end if;
                     if t_buf_cnt = 0 then
                         t_buf_cnt <= data_size-1;
                         t_complete <= '1';
+                        mosi <= '0';
+
                     else
                         t_buf_cnt <= t_buf_cnt - 1;
                     end if;
@@ -154,7 +172,7 @@ end if;
             internal_com_complete <= '0';
             com_complete_r_reg <= '0';
         elsif rising_edge(clk) then
-            if t_complete = '1' and r_complete = '1' then
+            if t_complete = '1'  then
                 internal_com_complete <= '1';
             else
                 internal_com_complete <= '0';
