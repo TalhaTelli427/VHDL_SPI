@@ -38,7 +38,6 @@ architecture Behavioral of spi_master is
     signal t_complete    : std_logic := '0';
 
     
-    signal r_complete    : std_logic := '0';
     signal r_buf_cnt     : integer range 0 to data_size-1 := data_size-1;
 
     signal internal_com_complete : std_logic := '0';
@@ -120,18 +119,15 @@ begin
 miso_p : process (clk, rst)
 begin
     if rst = '1' then
-        r_complete <= '0';
         r_buf_cnt <= data_size-1;
         receive_data <= (others => '0');
     elsif rising_edge(clk) then
-        r_complete <= '0';
         
         if clk_enable = '1' then
             if s_rise_edge = '1' then
                 receive_data(r_buf_cnt) <= miso;
                 
                 if r_buf_cnt = 0 then
-                    r_complete <= '1';
                     r_buf_cnt <= data_size-1;
                 else
                     r_buf_cnt <= r_buf_cnt - 1;
