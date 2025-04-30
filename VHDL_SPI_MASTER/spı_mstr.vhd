@@ -148,17 +148,19 @@ end process;
                 mosi <= buffer_t(t_buf_cnt);
                 if s_fall_edge = '1' then
                     if t_buf_cnt > 0 then
+                     t_buf_cnt <= t_buf_cnt - 1;
+
+
+                    else
                         t_buf_cnt <= data_size-1;
                         mosi <= '0';
 						
-                    else
-                        t_buf_cnt <= t_buf_cnt - 1;
                     end if;
                 end if;
             end if;
         end if;
     end process mosi_p;
-
+    
       complete_com : process (clk, rst)
     begin
         if rst = '1' then
@@ -173,6 +175,12 @@ end process;
             com_complete_r_reg <= internal_com_complete; 
         end if;
     end process complete_com;
+
+
+
+    s_clk <= clk_s;
+    com_complete_o <= com_complete_r_reg;
+end architecture Behavioral;
 
 
 
