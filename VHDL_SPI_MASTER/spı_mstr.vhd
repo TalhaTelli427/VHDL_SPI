@@ -36,7 +36,7 @@ architecture Behavioral of spi_master is
     signal buffer_t      : std_logic_vector (data_size-1 downto 0) := (others => '0');
     signal t_buf_cnt     : integer range 0 to data_size-1 :=data_size-1;
     signal t_complete    : std_logic := '0';
-
+	signal clk_step	 : integer range 0 to (data_size*2) := (data_size*2)-1;
     
     signal r_buf_cnt     : integer range 0 to data_size-1 := data_size-1;
 
@@ -44,41 +44,31 @@ architecture Behavioral of spi_master is
     signal com_complete_r_reg  : std_logic := '0';
     signal cs_release_wait : integer range 0 to 3 := 0; 
     signal cs_release_active : std_logic := '0';
-
+    signal r_buffer          :std_logic_vector(data_size-1 downto 0 );
 begin
 
     start_ctrl : process (clk, rst)
     begin
         if rst = '1' then
             clk_enable <= '0';
-            cs_o <= '1';
             buffer_t <= (others => '0');
-            cs_release_wait <= 0;
-            cs_release_active <= '0';
-
         elsif rising_edge(clk) then
-            if start_com = '1' then
-                clk_enable <= '1';
-                cs_o <= '0';
-                buffer_t <= transmit_data;
-                cs_release_wait <= 0;
-                cs_release_active <= '0';
-            elsif internal_com_complete = '1' then 
+            
+            if t_complete = '1' then 
                 clk_enable <= '0';
-                cs_release_active <= '1';
-            end if;
-            if cs_release_active = '1' then
-                if cs_release_wait < 3 then 
-                    cs_release_wait <= cs_release_wait + 1;
-                else
-                    cs_o <= '1'; 
-                    cs_release_wait <= 0;
-                    cs_release_active <= '0';
-                            end if; 
+			    cs_o <= '1'; 
+        elsif start_com = '1' then
+                clk_enable <= '1';
+                buffer_t <= transmit_data;
+				cs_o <= '0'; 
+
                 end if;    
 
         end if;
     end process start_ctrl;
+    
+
+    
 
 
     sclk_generator : process (clk, rst)
@@ -88,6 +78,8 @@ begin
             s_rise_edge   <= '0';
             s_fall_edge   <= '0';
             clk_s         <= '0';
+			t_complete <= '0';
+			clk_step <=  (data_size*2);
         elsif rising_edge(clk) then
             if clk_enable = '1' then
                 if clk_counter = half_clk_count * 2 - 1 then
@@ -95,12 +87,13 @@ begin
                     clk_counter   <= 0;
                     s_rise_edge   <= '0';
                     s_fall_edge   <= '1';
-
+					clk_step <= clk_step-1;
                 elsif clk_counter = half_clk_count - 1 then
                     clk_s         <= not clk_s;
                     s_rise_edge   <= '1';
                     s_fall_edge   <= '0';
                     clk_counter   <= clk_counter + 1;
+					clk_step <= clk_step-1;
 
                 else
                     clk_counter   <= clk_counter + 1;
@@ -112,7 +105,14 @@ begin
                 clk_counter   <= 0;
                 s_rise_edge   <= '0';
                 s_fall_edge   <= '0';
+				clk_step <=  (data_size*2);
             end if;
+			if(clk_step = 1 ) then
+				t_complete <= '1';
+			else
+				t_complete <= '0';
+
+			end if;
         end if;
     end process sclk_generator;
 
@@ -141,19 +141,16 @@ end process;
     mosi_p : process (clk, rst)
     begin
         if rst = '1' then
-            t_complete <= '0';
             t_buf_cnt <= data_size-1;
             mosi <= '0';
         elsif rising_edge(clk) then
             if clk_enable = '1' then
-                t_complete <= '0';
                 mosi <= buffer_t(t_buf_cnt);
                 if s_fall_edge = '1' then
-                    if t_buf_cnt = 0 then
+                    if t_buf_cnt > 0 then
                         t_buf_cnt <= data_size-1;
-                        t_complete <= '1';
                         mosi <= '0';
-
+						
                     else
                         t_buf_cnt <= t_buf_cnt - 1;
                     end if;
@@ -162,7 +159,7 @@ end process;
         end if;
     end process mosi_p;
 
-    complete_com : process (clk, rst)
+      complete_com : process (clk, rst)
     begin
         if rst = '1' then
             internal_com_complete <= '0';
@@ -178,7 +175,7 @@ end process;
     end process complete_com;
 
 
+
     s_clk <= clk_s;
     com_complete_o <= com_complete_r_reg;
-
 end architecture Behavioral;
