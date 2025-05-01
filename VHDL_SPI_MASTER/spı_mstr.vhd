@@ -68,7 +68,7 @@ begin
     end process start_ctrl;
     
 
-    
+
 
 
     sclk_generator : process (clk, rst)
@@ -80,6 +80,7 @@ begin
             clk_s         <= '0';
 			t_complete <= '0';
 			clk_step <=  (data_size*2);
+		     t_buf_cnt <= data_size-1;
         elsif rising_edge(clk) then
             if clk_enable = '1' then
                 if clk_counter = half_clk_count * 2 - 1 then
@@ -88,6 +89,8 @@ begin
                     s_rise_edge   <= '0';
                     s_fall_edge   <= '1';
 					clk_step <= clk_step-1;
+					t_buf_cnt <= t_buf_cnt - 1;
+
                 elsif clk_counter = half_clk_count - 1 then
                     clk_s         <= not clk_s;
                     s_rise_edge   <= '1';
@@ -106,6 +109,9 @@ begin
                 s_rise_edge   <= '0';
                 s_fall_edge   <= '0';
 				clk_step <=  (data_size*2);
+				t_buf_cnt <= data_size-1;
+				t_complete <= '0';
+
             end if;
 			if(clk_step = 1 ) then
 				t_complete <= '1';
@@ -141,22 +147,11 @@ end process;
     mosi_p : process (clk, rst)
     begin
         if rst = '1' then
-            t_buf_cnt <= data_size-1;
-            mosi <= '0';
+        mosi<='0';
         elsif rising_edge(clk) then
             if clk_enable = '1' then
                 mosi <= buffer_t(t_buf_cnt);
-                if s_fall_edge = '1' then
-                    if t_buf_cnt > 0 then
-                     t_buf_cnt <= t_buf_cnt - 1;
 
-
-                    else
-                        t_buf_cnt <= data_size-1;
-                        mosi <= '0';
-						
-                    end if;
-                end if;
             end if;
         end if;
     end process mosi_p;
@@ -178,12 +173,12 @@ end process;
 
 
 
+    process(clk)begin
+    if rising_edge(clk) then
     s_clk <= clk_s;
+    end if;
+    end process;
     com_complete_o <= com_complete_r_reg;
 end architecture Behavioral;
 
 
-
-    s_clk <= clk_s;
-    com_complete_o <= com_complete_r_reg;
-end architecture Behavioral;
