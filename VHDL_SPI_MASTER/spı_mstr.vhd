@@ -57,7 +57,7 @@ cs_controller: process(clk,rst) begin
         elsif rising_edge(clk) then
             if(clk_enable ='1')then
                 cs_o <= '0';
-            elsif(internal_com_complete ='1')then
+            elsif(t_complete ='1')then
                    cs_o <= '1'; 
         
     end if;
@@ -107,7 +107,7 @@ end process cs_controller;
 				buffer_t<=(others => '0');
                 clk_enable<='0';
             end if;
-			if(clk_step = 16 ) then
+			if(clk_step = data_size ) then
                 clk_enable <= '0';
                 t_complete<='1';
         elsif start_com = '1' then
@@ -146,16 +146,17 @@ end process;
         mosi<='0';
         t_buf_cnt <= data_size-1;
         elsif rising_edge(clk) then
+           
             if clk_enable = '1' then
                 mosi <= buffer_t(t_buf_cnt);
+                 end if;
                 if(s_fall_edge='1') then
                 t_buf_cnt <= t_buf_cnt - 1;
-                elsif(t_buf_cnt =0  ) then
-                        t_buf_cnt <= data_size-1;
-                        mosi<='0';
 
-                end if;
             end if;
+            if(start_com='1')then
+              t_buf_cnt <= data_size-1;
+              end if;
         end if;
     end process mosi_p;
     
@@ -183,5 +184,4 @@ end process;
     end process;
     com_complete_o <= com_complete_r_reg;
 end architecture Behavioral;
-
 
