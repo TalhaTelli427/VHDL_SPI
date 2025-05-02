@@ -12,7 +12,7 @@ architecture sim of tb_spi_master is
         generic (
             clk_hz  : integer := 100_000_000;
             sclk_hz : integer := 1_000_000;
-            data_size: integer := 16
+            data_size: integer := 8
         );
         port (
             clk             : in  std_logic;
@@ -32,12 +32,12 @@ architecture sim of tb_spi_master is
     signal clk             : std_logic := '0';
     signal rst             : std_logic := '1';
     signal miso            : std_logic := '0';
-    signal transmit_data   : std_logic_vector(15 downto 0) := (others => '0');
+    signal transmit_data   : std_logic_vector(7 downto 0) := (others => '0');
     signal start_com       : std_logic := '0';
     signal cs_o            : std_logic;
     signal s_clk           : std_logic;
     signal mosi            : std_logic;
-    signal receive_data    : std_logic_vector(15 downto 0);
+    signal receive_data    : std_logic_vector(7 downto 0);
     signal com_complete_o  : std_logic;
   
     constant clk_period : time := 10 ns; -- 100 MHz
@@ -48,8 +48,8 @@ begin
     uut: spi_master
         generic map (
             clk_hz => 100_000_000,
-            sclk_hz => 1_000_000,
-            data_size => 16
+            sclk_hz => 25_000_000,
+            data_size => 8
         )
         port map (
             clk => clk,
@@ -77,7 +77,7 @@ begin
 
     -- Stimulus
     stim_proc: process
-        variable miso_data : std_logic_vector(15 downto 0);
+        variable miso_data : std_logic_vector(7 downto 0);
         variable bit_idx : integer;
     begin
         -- Reset
@@ -87,21 +87,19 @@ begin
         wait for 50 ns;
 
         -- Test 1: transmit 0xA5, receive 0x3C
-        transmit_data <= x"A5A5";
-        miso_data := "1100001111000011"; -- 0xC3
+        transmit_data <= x"A5";
+        miso_data := "11000011"; -- 0xC3
         start_com <= '1';
         wait for clk_period;
         start_com <= '0';
 
-        bit_idx := 15;
+        bit_idx := 7;
 
         while bit_idx >= 0 loop
             -- SCLK falling edge bekle
 
             -- k???k bir gecikme ile MISO'yu s?r
-            wait for 1 ns;
             miso <= miso_data(bit_idx);
-			wait for 1 ns;
 
 			wait until falling_edge(s_clk);
             bit_idx := bit_idx - 1;
@@ -111,23 +109,21 @@ begin
         wait until com_complete_o = '1';
 
         -- Gelen veriyi kontrol et
-        assert receive_data = x"C3C3"
-        report "Test 1 Failed: Received data is not 0xC3C3" severity error;
+        assert receive_data = x"C3"
+        report "Test 1 Failed: Received data is not 0xC3" severity error;
 
         -- Test 2: transmit 0x5A, receive 0xC3
         wait for 1000 ns;
-        transmit_data <= x"A5A5";
-        miso_data := "0011110000111100"; -- 0x3C3C
+        transmit_data <= x"5A";
+        miso_data := "00111100"; -- 0x3C3C
         start_com <= '1';
         wait for clk_period;
         start_com <= '0';
 
-        bit_idx := 15;
+        bit_idx := 7;
 
         while bit_idx >= 0 loop
-            wait for 1 ns;
             miso <= miso_data(bit_idx);
-            wait for 1 ns;
 
             wait until falling_edge(s_clk);
             
