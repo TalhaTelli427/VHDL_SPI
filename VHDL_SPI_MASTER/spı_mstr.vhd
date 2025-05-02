@@ -36,60 +36,33 @@ architecture Behavioral of spi_master is
     signal buffer_t      : std_logic_vector (data_size-1 downto 0) := (others => '0');
     signal t_buf_cnt     : integer range 0 to data_size-1 :=data_size-1;
     signal t_complete    : std_logic := '0';
-	signal clk_step	 : integer range 0 to (data_size*2) := (data_size*2)-1;
+	signal clk_step	 : integer range 0 to (data_size*2) := 0;
     
     signal r_buf_cnt     : integer range 0 to data_size-1 := data_size-1;
 
     signal internal_com_complete : std_logic := '0';
     signal com_complete_r_reg  : std_logic := '0';
-    signal t_release_wait : integer range 0 to 3 := 0; 
+    signal cs_release_wait : integer range 0 to 3 := 0; 
     signal cs_release_active : std_logic := '0';
     signal r_buffer          :std_logic_vector(data_size-1 downto 0 );
-	signal t_starter         : std_logic :='0';
-	begin
+begin
 
-    start_ctrl : process (clk, rst)
-    begin
+
+    
+
+cs_controller: process(clk,rst) begin
         if rst = '1' then
-            buffer_t <= (others => '0');
-			t_starter<='0';
-			t_release_wait<=0;
-        elsif rising_edge(clk) then
+            cs_o <= '1'; 
             
-            if t_complete = '1' then
-				t_release_wait<=0;
-				t_starter<='0';
-        elsif start_com = '1' then
-                buffer_t <= transmit_data;
-				if(t_release_wait = 1)
-				t_starter<='1';
-				else 
-					t_release_wait<=t_release_wait+1;
-                end if;    
-
-        end if;
-    end process start_ctrl;
-    
-<<<<<<< Updated upstream
-
-
-=======
-clk_starter :process(clk,rst) begin
-        if rst = '1' then
-			clk_enable <= '0';
-			cs_o <= '1'; 
-		elsif rising_edge(clk) then
-			if t_complete = '1' then
-				clk_enable <= '0';
-				cs_o <= '1'; 
-			elsif t_starter='1' then
-				clk_enable <= '1';
-				cs_o <= '0'; 
-			end if;
-		end if;
-end process clk_starter;
-    
->>>>>>> Stashed changes
+        elsif rising_edge(clk) then
+            if(clk_enable ='1')then
+                cs_o <= '0';
+            elsif(internal_com_complete ='1')then
+                   cs_o <= '1'; 
+        
+    end if;
+    end if;
+end process cs_controller;
 
 
     sclk_generator : process (clk, rst)
@@ -100,9 +73,10 @@ end process clk_starter;
             s_fall_edge   <= '0';
             clk_s         <= '0';
 			t_complete <= '0';
-			t_buf_cnt <= data_size-1;
-			clk_step <=  (data_size*2);
-		     t_buf_cnt <= data_size-1;
+			clk_step <= 0;
+			clk_enable <= '0';
+            buffer_t <= (others => '0');
+
         elsif rising_edge(clk) then
             if clk_enable = '1' then
                 if clk_counter = half_clk_count * 2 - 1 then
@@ -110,19 +84,13 @@ end process clk_starter;
                     clk_counter   <= 0;
                     s_rise_edge   <= '0';
                     s_fall_edge   <= '1';
-					clk_step <= clk_step-1;
-<<<<<<< Updated upstream
-					t_buf_cnt <= t_buf_cnt - 1;
+					clk_step <= clk_step+1;
 
-=======
-					t_buf_cnt <= t_buf_cnt-1;
->>>>>>> Stashed changes
                 elsif clk_counter = half_clk_count - 1 then
                     clk_s         <= not clk_s;
                     s_rise_edge   <= '1';
                     s_fall_edge   <= '0';
                     clk_counter   <= clk_counter + 1;
-					clk_step <= clk_step-1;
 
                 else
                     clk_counter   <= clk_counter + 1;
@@ -134,16 +102,17 @@ end process clk_starter;
                 clk_counter   <= 0;
                 s_rise_edge   <= '0';
                 s_fall_edge   <= '0';
-				clk_step <=  (data_size*2);
-				t_buf_cnt <= data_size-1;
+				clk_step <=  0;
 				t_complete <= '0';
-
+				buffer_t<=(others => '0');
+                clk_enable<='0';
             end if;
-			if(clk_step = 1 ) then
-				t_complete <= '1';
-			    t_buf_cnt <= data_size-1;
-			else
-				t_complete <= '0';
+			if(clk_step = 16 ) then
+                clk_enable <= '0';
+                t_complete<='1';
+        elsif start_com = '1' then
+                clk_enable <= '1';
+                buffer_t <= transmit_data;
 
 			end if;
         end if;
@@ -174,15 +143,18 @@ end process;
     mosi_p : process (clk, rst)
     begin
         if rst = '1' then
-<<<<<<< Updated upstream
         mosi<='0';
-=======
-            mosi <= '0';
->>>>>>> Stashed changes
+        t_buf_cnt <= data_size-1;
         elsif rising_edge(clk) then
             if clk_enable = '1' then
                 mosi <= buffer_t(t_buf_cnt);
+                if(s_fall_edge='1') then
+                t_buf_cnt <= t_buf_cnt - 1;
+                elsif(t_buf_cnt =0  ) then
+                        t_buf_cnt <= data_size-1;
+                        mosi<='0';
 
+                end if;
             end if;
         end if;
     end process mosi_p;
