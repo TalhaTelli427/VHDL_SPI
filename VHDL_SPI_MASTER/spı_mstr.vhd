@@ -150,11 +150,14 @@ end process;
             if clk_enable = '1' then
                 mosi <= buffer_t(t_buf_cnt);
                  end if;
-                if(s_fall_edge='1') then
+                if(s_fall_edge='1' and t_buf_cnt > 0) then
                 t_buf_cnt <= t_buf_cnt - 1;
 
             end if;
-            if(start_com='1')then
+            if t_complete = '1'  then
+                       mosi<='0';
+                end if;
+            if( start_com ='1')then
               t_buf_cnt <= data_size-1;
               end if;
         end if;
@@ -184,4 +187,5 @@ end process;
     end process;
     com_complete_o <= com_complete_r_reg;
 end architecture Behavioral;
+
 
