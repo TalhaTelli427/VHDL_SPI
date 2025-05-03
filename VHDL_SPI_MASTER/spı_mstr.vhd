@@ -136,6 +136,9 @@ begin
                 end if;
             end if;
         end if;
+        if(internal_com_complete='1') then
+           receive_data <= (others => '0');
+        end if;
     end if;
 end process;
 
@@ -174,7 +177,7 @@ end process;
             else
                 internal_com_complete <= '0';
             end if;
-            com_complete_r_reg <= internal_com_complete; 
+            --com_complete_r_reg <= internal_com_complete; 
         end if;
     end process complete_com;
 
@@ -185,7 +188,6 @@ end process;
     s_clk <= clk_s;
     end if;
     end process;
-    com_complete_o <= com_complete_r_reg;
+    com_complete_o <= internal_com_complete;
 end architecture Behavioral;
-
 
