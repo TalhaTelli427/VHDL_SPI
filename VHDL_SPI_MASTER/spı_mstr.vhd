@@ -41,9 +41,6 @@ architecture Behavioral of spi_master is
     signal r_buf_cnt     : integer range 0 to data_size-1 := data_size-1;
 
     signal internal_com_complete : std_logic := '0';
-    signal com_complete_r_reg  : std_logic := '0';
-    signal cs_release_wait : integer range 0 to 3 := 0; 
-    signal cs_release_active : std_logic := '0';
     signal r_buffer          :std_logic_vector(data_size-1 downto 0 );
 begin
 
