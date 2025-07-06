@@ -28,7 +28,7 @@ end entity spi_master;
 architecture Behavioral of spi_master is
 
     constant half_clk_count : integer := clk_hz / (sclk_hz * 2);
-    signal clk_idle      : std_logic := cpol;
+    constant clk_idle      : std_logic := cpol;
     signal clk_enable    : std_logic := '0';
     signal clk_counter   : integer range 0 to half_clk_count * 2 := 0;
 	
@@ -216,7 +216,7 @@ end process;
 
 
 
-    process(clk)begin
+    process(clk,rst)begin
       if rst = '1' then
             s_clk<='0';
     elsif rising_edge(clk) then
@@ -227,5 +227,4 @@ end process;
     com_complete_o <= internal_com_complete;
     
 end architecture Behavioral;
-
 
