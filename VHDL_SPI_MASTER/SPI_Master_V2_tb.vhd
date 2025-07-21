@@ -75,7 +75,7 @@ begin
         wait for 10 ns;
 
         -- Sonuçları kontrol et
-        assert receive_data = "11001100"
+        assert receive_data = "11001101"
             report "MISO verisi beklenenle uyusmuyor!" severity warning;
 
         -- MOSI sonunda 0 olabilir, ama garanti değil - o yüzden istersen bu kontrolü kaldır
@@ -90,26 +90,31 @@ begin
 
     -- MISO slave simülasyonu: düşen s_clk kenarında veri hazırlar
 miso_slave_proc : process
-    variable miso_data : std_logic_vector(7 downto 0) := "11001100";
-    variable bit_idx   : integer range 0 to 7 := 7;
+    variable miso_data : std_logic_vector(7 downto 0) := "11001101";
+    variable bit_idx   : integer range 0 to 7;
 begin
-    wait until rst = '0';
-    wait until start_spi = '1';
-    wait until start_spi = '0';
+    wait until rst = '0'; -- Reset bekleniyor
+    wait until start_spi = '1'; -- SPI başlangıç sinyali bekleniyor
+    wait until start_spi = '0'; -- SPI başlangıç sinyalinin düşen kenarı bekleniyor
 
-    --  İlk biti, ilk saat kenarı gelmeden yaz
+    -- Her transfer için bit_idx'i sıfırla
+    bit_idx := 7; 
+
+    -- İlk biti, ilk saat kenarı gelmeden önce MISO hattına koy
+    -- Bu, Master'ın ilk saat kenarında bu biti örnekleyebilmesini sağlar.
     miso <= miso_data(bit_idx);
     bit_idx := bit_idx - 1;
 
-    for i in 1 to 7 loop  -- 7 kez bekle, ilk biti zaten verdik
-        wait until s_clk'event and s_clk = '0';
+    -- Kalan 7 bit için döngü
+    -- (bit_idx = 6'dan 0'a kadar olan bitler)
+    for i in 1 to 7 loop 
+        wait until s_clk'event and s_clk = '0'; -- Saat sinyalinin düşen kenarını bekle
         miso <= miso_data(bit_idx);
         bit_idx := bit_idx - 1;
     end loop;
-
-    miso <= '0'; -- Transfer sonrası sıfırla
-    wait;
+    wait until com_complete_o='1';
+    miso <= '0'; -- Transfer sonrası MISO hattını sıfırla (varsayılan duruma getir)
+    wait; -- Sürecin askıya alınması
 end process;
-
 
 end architecture;
