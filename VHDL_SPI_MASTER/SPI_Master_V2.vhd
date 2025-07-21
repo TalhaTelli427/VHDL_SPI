@@ -35,7 +35,7 @@ architecture rtl of ent is
 
     signal sclk_prev         : std_logic := '0';
     signal buf_s_clk         : std_logic := '0';
-
+    signal rx_reset_cnt      :std_logic  :='0';
     type edge_type is (NONE, POS_EDGE, NEG_EDGE);
     signal edge_state        : edge_type := NONE;
     signal reg_com_complete_o : std_logic := '0';
@@ -140,6 +140,10 @@ begin
         R_Data_counter <= data_size - 1;
     elsif rising_edge(clk) then
         if clk_enable = '1' then
+            if(rx_reset_cnt ='0') then
+              receive_data <= (others => '0');
+              rx_reset_cnt<='1';
+            end if;
             if edge_state = POS_EDGE then
                 receive_data(R_Data_counter) <= miso;
                 if R_Data_counter > 0 then
@@ -148,10 +152,8 @@ begin
             end if;
         else
             
-            if reg_com_complete_o = '1' then 
-                receive_data <= (others => '0');
-            end if;
             R_Data_counter <= data_size - 1; 
+            rx_reset_cnt<='0';
         end if;
     end if;
 end process;
