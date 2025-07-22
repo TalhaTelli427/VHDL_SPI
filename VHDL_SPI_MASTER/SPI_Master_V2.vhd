@@ -39,6 +39,10 @@ architecture rtl of ent is
     type edge_type is (NONE, POS_EDGE, NEG_EDGE);
     signal edge_state        : edge_type := NONE;
     signal reg_com_complete_o : std_logic := '0';
+    signal reg_com_complete_o_1 : std_logic := '0';
+    signal reg_com_complete_o_2 : std_logic := '0';
+	signal buf_s_clk_1          : std_logic :='0'; 
+    signal  buf_recieve_data : std_logic_vector (data_size-1 downto 0);
 
 begin
 
@@ -54,15 +58,20 @@ begin
                 reg_com_complete_o <= '0';
             elsif edge_counter = (data_size * 2) then
                 clk_enable <= '0';
-                reg_com_complete_o <= '1';
+                reg_com_complete_o_2<='1';
+                reg_com_complete_o_1 <= reg_com_complete_o_2;
+                reg_com_complete_o<=reg_com_complete_o_1;
                 -- Haberleşme tamamlandı
             else
-                reg_com_complete_o <= '0';
+                reg_com_complete_o_2 <= '0';
+                reg_com_complete_o_1 <= reg_com_complete_o_2;
+                reg_com_complete_o<=reg_com_complete_o_1;
+
             end if;
         end if;
     end process;
 
-    com_complete_o <= reg_com_complete_o;
+	
 
     
     -- SPI saat üretimi
@@ -137,21 +146,26 @@ MISO_PROC : process(clk, rst)
 begin
     if rst = '1' then
         receive_data <= (others => '0');
+        buf_recieve_data<= (others => '0');
         R_Data_counter <= data_size - 1;
+        
     elsif rising_edge(clk) then
         if clk_enable = '1' then
             if(rx_reset_cnt ='0') then
+            
+              buf_recieve_data<= (others => '0');
               receive_data <= (others => '0');
               rx_reset_cnt<='1';
+              
             end if;
             if edge_state = POS_EDGE then
-                receive_data(R_Data_counter) <= miso;
+                buf_recieve_data(R_Data_counter) <= miso;
                 if R_Data_counter > 0 then
                     R_Data_counter <= R_Data_counter - 1;
                 end if;
             end if;
         else
-            
+            receive_data<=buf_recieve_data;
             R_Data_counter <= data_size - 1; 
             rx_reset_cnt<='0';
         end if;
@@ -160,9 +174,13 @@ end process;
   SPI_Clock : process (clk, rst)
   begin
     if rst = '1' then
+    com_complete_o<='0';
       s_clk  <= '0';
+      buf_s_clk_1<='0';
     elsif rising_edge(clk) then
-        s_clk <= buf_s_clk;
+        buf_s_clk_1 <= buf_s_clk;
+        s_clk<=buf_s_clk_1;
+        com_complete_o <= reg_com_complete_o;
    
     end if;
   end process SPI_Clock;
