@@ -43,17 +43,41 @@ architecture rtl of ent is
     signal reg_com_complete_o_2 : std_logic := '0';
 	signal buf_s_clk_1          : std_logic :='0'; 
     signal  buf_recieve_data : std_logic_vector (data_size-1 downto 0);
+    
+    signal start_spi_sync1 : std_logic := '0';
+    signal start_spi_sync2 : std_logic := '0';
+    signal start_spi_synced_pulse : std_logic := '0'; 
+
 
 begin
+	
+    
+    
+    Start_SPI_Synchronizer_PROC : process(clk, rst)
+    begin
+        if rst = '1' then
+            start_spi_sync1 <= '0';
+            start_spi_sync2 <= '0';
+            start_spi_synced_pulse <= '0';
+        elsif rising_edge(clk) then
+            start_spi_sync1 <= start_spi;
+            start_spi_sync2 <= start_spi_sync1;
 
-    -- SPI başlatma ve bitiş kontrolü
+            if start_spi_sync2 = '1' and start_spi_sync1 = '0' then
+              start_spi_synced_pulse <= '1';
+            else
+              start_spi_synced_pulse <= '0';
+            end if;
+        end if;
+    end process;
+   
     Enabler_PROC : process(clk, rst)
     begin
         if rst = '1' then
             clk_enable <= '0';
             reg_com_complete_o <= '0';
         elsif rising_edge(clk) then
-            if start_spi = '1' then
+            if start_spi_synced_pulse = '1' then
                 clk_enable <= '1';
                 reg_com_complete_o <= '0';
             elsif edge_counter = (data_size * 2) then
@@ -61,7 +85,6 @@ begin
                 reg_com_complete_o_2<='1';
                 reg_com_complete_o_1 <= reg_com_complete_o_2;
                 reg_com_complete_o<=reg_com_complete_o_1;
-                -- Haberleşme tamamlandı
             else
                 reg_com_complete_o_2 <= '0';
                 reg_com_complete_o_1 <= reg_com_complete_o_2;
@@ -116,7 +139,6 @@ begin
     end if;
 end process;
 
-    -- MOSI işlemi (düşen kenarda veri gönderimi)
     MOSI_PROC : process(clk, rst)
     begin
         if rst = '1' then
@@ -140,8 +162,6 @@ end process;
         end if;
     end process;
 
-    -- MISO işlemi (yükselen kenarda veri alımı)
- -- MISO işlemi (yükselen kenarda veri alımı)
 MISO_PROC : process(clk, rst)
 begin
     if rst = '1' then
@@ -151,11 +171,10 @@ begin
         
     elsif rising_edge(clk) then
         if clk_enable = '1' then
-            if(rx_reset_cnt ='0') then
+            if(start_spi_sync2 = '1' and start_spi_sync1 = '0') then
             
               buf_recieve_data<= (others => '0');
               receive_data <= (others => '0');
-              rx_reset_cnt<='1';
               
             end if;
             if edge_state = POS_EDGE then
@@ -167,7 +186,6 @@ begin
         else
             receive_data<=buf_recieve_data;
             R_Data_counter <= data_size - 1; 
-            rx_reset_cnt<='0';
         end if;
     end if;
 end process;
@@ -185,5 +203,4 @@ end process;
     end if;
   end process SPI_Clock;
 
- 
    end architecture;
