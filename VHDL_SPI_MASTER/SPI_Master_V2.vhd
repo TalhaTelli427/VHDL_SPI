@@ -43,7 +43,8 @@ architecture rtl of ent is
     signal reg_com_complete_o_2 : std_logic := '0';
 	signal buf_s_clk_1          : std_logic :='0'; 
     signal  buf_recieve_data : std_logic_vector (data_size-1 downto 0);
-    
+    signal  buf_transmit_data : std_logic_vector (data_size-1 downto 0);
+
     signal start_spi_sync1 : std_logic := '0';
     signal start_spi_sync2 : std_logic := '0';
     signal start_spi_synced_pulse : std_logic := '0'; 
@@ -76,8 +77,10 @@ begin
         if rst = '1' then
             clk_enable <= '0';
             reg_com_complete_o <= '0';
+            buf_transmit_data<= (others => '0');
         elsif rising_edge(clk) then
             if start_spi_synced_pulse = '1' then
+                buf_transmit_data<=transmit_data;
                 clk_enable <= '1';
                 reg_com_complete_o <= '0';
             elsif edge_counter = (data_size * 2) then
@@ -85,6 +88,7 @@ begin
                 reg_com_complete_o_2<='1';
                 reg_com_complete_o_1 <= reg_com_complete_o_2;
                 reg_com_complete_o<=reg_com_complete_o_1;
+            	buf_transmit_data<= (others => '0');
             else
                 reg_com_complete_o_2 <= '0';
                 reg_com_complete_o_1 <= reg_com_complete_o_2;
@@ -147,7 +151,7 @@ end process;
         elsif rising_edge(clk) then
             if clk_enable = '1' then
                 if edge_counter = 0 then
-                    mosi <= transmit_data(data_size-1);
+                    mosi <= buf_transmit_data(data_size-1);
                     T_Data_counter <= data_size - 2;
                 elsif edge_state = NEG_EDGE then
                     mosi <= transmit_data(T_Data_counter);
@@ -170,13 +174,14 @@ begin
         R_Data_counter <= data_size - 1;
         
     elsif rising_edge(clk) then
-        if clk_enable = '1' then
-            if(start_spi_sync2 = '1' and start_spi_sync1 = '0') then
+        if(start_spi_sync2 = '1' and start_spi_sync1 = '0') then
             
               buf_recieve_data<= (others => '0');
               receive_data <= (others => '0');
               
             end if;
+
+        if clk_enable = '1' then
             if edge_state = POS_EDGE then
                 buf_recieve_data(R_Data_counter) <= miso;
                 if R_Data_counter > 0 then
