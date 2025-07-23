@@ -154,7 +154,7 @@ end process;
                     mosi <= buf_transmit_data(data_size-1);
                     T_Data_counter <= data_size - 2;
                 elsif edge_state = NEG_EDGE then
-                    mosi <= transmit_data(T_Data_counter);
+                    mosi <= buf_transmit_data(T_Data_counter);
                     if T_Data_counter > 0 then
                         T_Data_counter <= T_Data_counter - 1;
                     end if;
@@ -194,6 +194,7 @@ begin
         end if;
     end if;
 end process;
+
   SPI_Clock : process (clk, rst)
   begin
     if rst = '1' then
