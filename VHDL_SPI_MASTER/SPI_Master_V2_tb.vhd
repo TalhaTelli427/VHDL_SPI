@@ -54,7 +54,7 @@ begin
     end process;
 
     -- Test stimulus
-    stim_proc: process
+stim_proc: process
     begin
         -- Reset
         rst <= '1';
@@ -72,8 +72,37 @@ begin
 
         -- Transferin tamamlanmasını bekle
         wait until com_complete_o = '1';
-        wait for 10 ns;
+        wait for 30 ns;
+        
+        
+        -- Veri yükle
+        transmit_data <= "11110000";
 
+        -- SPI başlat sinyali (1 clock süresinden uzun)
+        start_spi <= '1';
+        wait for 20 ns;
+        start_spi <= '0';
+
+        -- Transferin tamamlanmasını bekle
+        wait until com_complete_o = '1';
+        wait for 10 ns;
+ -- Veri yükle
+        transmit_data <= "00011100";
+
+        -- SPI başlat sinyali (1 clock süresinden uzun)
+        start_spi <= '1';
+        wait for 20 ns;
+        start_spi <= '0';
+        wait for 50 ns;
+        rst <= '1';
+        wait for 20 ns;
+        rst <= '0';
+        wait for 20 ns;
+
+   
+        -- Transferin tamamlanmasını bekle
+        wait until com_complete_o = '1';
+        wait for 10 ns;
         -- Sonuçları kontrol et
         assert receive_data = "11001101"
             report "MISO verisi beklenenle uyusmuyor!" severity warning;
@@ -90,10 +119,22 @@ begin
 
     -- MISO slave simülasyonu: düşen s_clk kenarında veri hazırlar
 miso_slave_proc : process
-    variable miso_data : std_logic_vector(7 downto 0) := "11001101";
+    variable caunter : integer range 0 to 4:=0; 
+    variable miso_data : std_logic_vector(7 downto 0) := "11111101";
     variable bit_idx   : integer range 0 to 7;
 begin
-    wait until rst = '0'; -- Reset bekleniyor
+        if(caunter=0)then
+            miso_data:="11111101";
+            
+        elsif(caunter=1) then
+          miso_data:="10101010";
+      
+        elsif(caunter=2) then
+            miso_data:="10000001";
+
+        end if;
+
+    --wait until rst = '0'; -- Reset bekleniyor
     wait until start_spi = '1'; -- SPI başlangıç sinyali bekleniyor
     wait until start_spi = '0'; -- SPI başlangıç sinyalinin düşen kenarı bekleniyor
 
@@ -103,18 +144,18 @@ begin
     -- İlk biti, ilk saat kenarı gelmeden önce MISO hattına koy
     -- Bu, Master'ın ilk saat kenarında bu biti örnekleyebilmesini sağlar.
     miso <= miso_data(bit_idx);
-    bit_idx := bit_idx - 1;
 
     -- Kalan 7 bit için döngü
     -- (bit_idx = 6'dan 0'a kadar olan bitler)
     for i in 1 to 7 loop 
         wait until s_clk'event and s_clk = '0'; -- Saat sinyalinin düşen kenarını bekle
+         bit_idx := bit_idx - 1;
         miso <= miso_data(bit_idx);
-        bit_idx := bit_idx - 1;
     end loop;
     wait until com_complete_o='1';
+    caunter:=caunter+1;
     miso <= '0'; -- Transfer sonrası MISO hattını sıfırla (varsayılan duruma getir)
-    wait; -- Sürecin askıya alınması
+    --wait; -- Sürecin askıya alınması
 end process;
 
 end architecture;
