@@ -5,7 +5,7 @@ use IEEE.NUMERIC_STD.ALL;
 entity ent is
     generic (
         clk_hz      : integer := 100_000_000;
-        sclk_hz     : integer := 1_000_000;
+        sclk_hz     : integer := 5_000_000;
         data_size   : integer := 8
     );
     port (
@@ -48,7 +48,6 @@ architecture rtl of ent is
     signal start_spi_sync1 : std_logic := '0';
     signal start_spi_sync2 : std_logic := '0';
     signal start_spi_synced_pulse : std_logic := '0'; 
-
 
 begin
 	

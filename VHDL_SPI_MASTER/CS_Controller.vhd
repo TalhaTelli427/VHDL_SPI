@@ -5,7 +5,7 @@ use IEEE.NUMERIC_STD.ALL;
 entity CS_Controller is
     generic (
         clk_hz         : integer := 100_000_000;
-        sclk_hz        : integer := 1_000_000;
+        sclk_hz        : integer := 5_000_000;
         data_size      : integer := 8;
         cs_wait_cycles : integer := 20 -- bekleme süresi (clock cinsinden)
     );
